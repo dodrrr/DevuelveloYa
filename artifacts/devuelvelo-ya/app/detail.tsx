@@ -1,116 +1,136 @@
 import React, { useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useApp } from '@/context/AppContext';
+import { daysLeftFor, useApp } from '@/context/AppContext';
+import { formatDate, urgencyLabel } from '@/utils/return-dates';
 
-function formatPrice(price: number) { return price.toFixed(2).replace('.', ',') + ' €'; }
-function getTone(days: number, colors: ReturnType<typeof useApp>['colors']) {
-  if (days <= 2) return { color: colors.destructive, soft: colors.urgentSoft };
-  if (days <= 10) return { color: colors.warning, soft: colors.warningSoft };
-  return { color: colors.success, soft: colors.successSoft };
-}
+function formatPrice(price: number) { return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(price); }
 
 export default function DetailScreen() {
-  const { colors, returns, markReturned } = useApp();
+  const { colors, returns, setReturnOption, markReturned, removeReturn } = useApp();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const item = returns.find((entry) => entry.id === id);
-  const [option, setOption] = useState<string | null>(null);
-  if (!item) return <View style={[styles.center, { backgroundColor: colors.background }]}><Text style={{ color: colors.foreground }}>Esta devolución ya no está activa.</Text><Pressable onPress={() => router.back()}><Text style={{ color: colors.primary, marginTop: 12 }}>Volver</Text></Pressable></View>;
-  const tone = getTone(item.daysLeft, colors);
-  const progress = Math.max(0.08, Math.min(1, item.daysLeft / item.totalDays));
-  const ringSize = 202;
-  const radius = 82;
-  const circumference = 2 * Math.PI * radius;
+  const [busy, setBusy] = useState(false);
+  if (!item) return <View style={[styles.center, { backgroundColor: colors.background }]}><Text style={[styles.missingTitle, { color: colors.foreground }]}>Compra no encontrada</Text><Text style={[styles.missingCopy, { color: colors.mutedForeground }]}>Puede que ya esté en tu historial.</Text><Pressable onPress={() => router.back()} style={styles.backLink}><Text style={{ color: colors.primary, fontWeight: '600' }}>Volver a mis compras</Text></Pressable></View>;
 
-  const confirmReturned = () => {
-    Alert.alert('¿Marcar como devuelto?', 'La compra desaparecerá de tus devoluciones activas.', [
+  const days = daysLeftFor(item);
+  const urgent = days <= 2;
+  const tone = days <= 2 ? colors.destructive : days <= 7 ? colors.warning : colors.success;
+  const dueCopy = days < 0 ? 'El plazo indicado ya ha pasado' : days === 0 ? 'Último día para devolverlo' : days === 1 ? 'Mañana es el último día' : `Tienes ${days} días para decidir`;
+
+  const openReturns = async () => {
+    if (!item.returnsUrl) {
+      Alert.alert('Añade un enlace', 'Edita la compra y guarda el enlace oficial de devolución de esta tienda.');
+      return;
+    }
+    try { await Linking.openURL(item.returnsUrl); }
+    catch { Alert.alert('No se pudo abrir', 'Comprueba el enlace de devolución en los datos de la compra.'); }
+  };
+
+  const finishReturn = (outcome: 'in_progress' | 'refunded') => {
+    const title = outcome === 'refunded' ? '¿Confirmas que recibiste el reembolso?' : '¿Ya enviaste o entregaste el artículo?';
+    const body = outcome === 'refunded' ? 'La compra se guardará en el historial como reembolsada.' : 'La compra pasará al historial para que puedas seguir el reembolso.';
+    Alert.alert(title, body, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Marcar como devuelto', onPress: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); markReturned(item.id); router.back(); } },
+      { text: 'Confirmar', onPress: async () => { setBusy(true); await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); markReturned(item.id, outcome); router.back(); setBusy(false); } },
     ]);
   };
 
+  const deleteItem = () => Alert.alert('Eliminar compra', 'Se eliminará de tu lista y no aparecerá en el historial.', [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Eliminar', style: 'destructive', onPress: () => { removeReturn(item.id); router.back(); } },
+  ]);
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: insets.bottom + 30 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingTop: insets.top + 4, paddingBottom: insets.bottom + 35 }}>
         <View style={styles.navbar}>
-          <Pressable onPress={() => router.back()} style={styles.navButton} accessibilityLabel="Volver"><Feather name="chevron-left" size={26} color={colors.foreground} /></Pressable>
-          <Text numberOfLines={1} style={[styles.navTitle, { color: colors.foreground }]}>{item.title}</Text>
-          <Pressable onPress={() => Alert.alert('Opciones', 'Puedes editar los datos o eliminar esta devolución.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Eliminar', style: 'destructive', onPress: () => { markReturned(item.id); router.back(); } }])} style={styles.navButton} accessibilityLabel="Más opciones"><Feather name="more-horizontal" size={24} color={colors.foreground} /></Pressable>
+          <Pressable onPress={() => router.back()} style={[styles.navButton, { backgroundColor: colors.card }]} accessibilityLabel="Volver"><Feather name="chevron-left" size={23} color={colors.foreground} /></Pressable>
+          <Text style={[styles.navTitle, { color: colors.foreground }]}>Detalle de compra</Text>
+          <Pressable onPress={() => router.push({ pathname: '/upload', params: { edit: item.id } })} style={[styles.navButton, { backgroundColor: colors.card }]} accessibilityLabel="Editar compra"><Feather name="edit-3" size={17} color={colors.foreground} /></Pressable>
         </View>
         <View style={styles.content}>
-          <View style={[styles.heroCard, { backgroundColor: colors.card }]}>
-            <View style={styles.heroTop}>
-              <View style={[styles.storeMark, { backgroundColor: item.accent }]}><Text style={styles.storeInitial}>{item.initials}</Text></View>
-              <View style={styles.heroCopy}><Text style={[styles.itemTitle, { color: colors.foreground }]}>{item.title}</Text><Text style={[styles.itemStore, { color: colors.mutedForeground }]}>{item.store}</Text></View>
-              <Text style={[styles.price, { color: colors.foreground }]}>{formatPrice(item.price)}</Text>
-            </View>
-            <View style={[styles.metaGrid, { borderTopColor: colors.border }]}>
-              <View><Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Comprado el</Text><Text style={[styles.metaValue, { color: colors.foreground }]}>{item.purchaseDate}</Text></View>
-              <View><Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Devolver antes del</Text><Text style={[styles.metaValue, { color: tone.color }]}>{item.deadline}</Text></View>
-            </View>
+          <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.heroTop}><View style={[styles.storeMark, { backgroundColor: item.accent }]}><Text style={styles.storeInitial}>{item.initials}</Text></View><View style={styles.heroCopy}><Text style={[styles.itemTitle, { color: colors.foreground }]}>{item.title}</Text><Text style={[styles.itemStore, { color: colors.mutedForeground }]}>{item.store}</Text></View></View>
+            <View style={[styles.priceRow, { borderTopColor: colors.border }]}><Text style={[styles.priceLabel, { color: colors.mutedForeground }]}>Importe de la compra</Text><Text style={[styles.price, { color: colors.foreground }]}>{formatPrice(item.price)}</Text></View>
           </View>
 
-          <View style={[styles.countdownCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>TIEMPO RESTANTE</Text>
-            <View style={styles.ringWrap}>
-              <Svg width={ringSize} height={ringSize} viewBox="0 0 202 202">
-                <Circle cx="101" cy="101" r={radius} stroke={colors.muted} strokeWidth="14" fill="none" />
-                <Circle cx="101" cy="101" r={radius} stroke={tone.color} strokeWidth="14" fill="none" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progress)} transform="rotate(-90 101 101)" />
-              </Svg>
-              <View style={styles.ringCenter}><Text style={[styles.ringNumber, { color: tone.color }]}>{item.daysLeft}</Text><Text style={[styles.ringDays, { color: colors.mutedForeground }]}>{item.daysLeft === 1 ? 'día' : 'días'}</Text></View>
-            </View>
-            <View style={[styles.deadlinePill, { backgroundColor: tone.soft }]}><View style={[styles.dot, { backgroundColor: tone.color }]} /><Text style={[styles.deadlineText, { color: tone.color }]}>{item.daysLeft <= 2 ? 'Últimos días para devolverlo' : 'Todavía tienes tiempo'}</Text></View>
+          <View style={[styles.deadlineCard, { backgroundColor: urgent ? colors.urgentSoft : colors.accent }]}>
+            <View style={[styles.deadlineIcon, { backgroundColor: colors.card }]}><Feather name="clock" size={18} color={tone} /></View>
+            <View style={styles.deadlineCopy}><Text style={[styles.deadlineEyebrow, { color: colors.mutedForeground }]}>FECHA LÍMITE INDICADA</Text><Text style={[styles.deadlineDate, { color: colors.foreground }]}>{formatDate(item.deadline)}</Text><Text style={[styles.deadlineHint, { color: tone }]}>{dueCopy}</Text></View>
+            <View style={styles.countdown}><Text style={[styles.countdownNumber, { color: tone }]}>{days < 0 ? '!' : days}</Text><Text style={[styles.countdownLabel, { color: colors.mutedForeground }]}>{days < 0 ? 'pasó' : days === 1 ? 'día' : 'días'}</Text></View>
           </View>
+          <View style={[styles.sourceNote, { backgroundColor: colors.card, borderColor: colors.border }]}><Feather name="info" size={14} color={colors.mutedForeground} /><Text style={[styles.sourceText, { color: colors.mutedForeground }]}>Fecha guardada por ti. Confirma las condiciones exactas en tu pedido o con la tienda.</Text></View>
 
-          <Text style={[styles.sectionHeading, { color: colors.foreground }]}>Opciones de devolución</Text>
-          <View style={styles.optionsRow}>
-            {['Reembolso', 'Vale', 'Cambio de talla'].map((label) => { const selected = option === label; return <Pressable key={label} onPress={() => { setOption(selected ? null : label); Haptics.selectionAsync(); }} style={[styles.optionChip, { backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border }]}><Feather name={selected ? 'check' : 'circle'} size={14} color={selected ? colors.primaryForeground : colors.mutedForeground} /><Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontSize: 13, fontWeight: '500' }}>{label}</Text></Pressable>; })}
-          </View>
-          <Pressable onPress={() => Linking.openURL(item.returnsUrl)} style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Text style={styles.primaryButtonText}>Ir a la web de devoluciones</Text><Feather name="external-link" size={17} color={colors.primaryForeground} /></Pressable>
-          <Pressable onPress={confirmReturned} style={styles.returnedButton}><Feather name="check-circle" size={16} color={colors.destructive} /><Text style={[styles.returnedText, { color: colors.destructive }]}>Marcar como devuelto</Text></Pressable>
+          <View style={styles.datesRow}><DateCell label="Comprado" value={formatDate(item.purchaseDate)} colors={colors} /><View style={[styles.dateDivider, { backgroundColor: colors.border }]} /><DateCell label="Fecha límite" value={formatDate(item.deadline)} colors={colors} /></View>
+
+          <Text style={[styles.sectionHeading, { color: colors.foreground }]}>¿Qué quieres conseguir?</Text>
+          <View style={styles.optionsRow}>{['Reembolso', 'Vale', 'Cambio'].map((label) => { const selected = item.returnOption === label; return <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => { setReturnOption(item.id, selected ? undefined : label); Haptics.selectionAsync(); }} style={[styles.optionChip, { backgroundColor: selected ? colors.accent : colors.card, borderColor: selected ? colors.primary : colors.border }]}><Feather name={selected ? 'check-circle' : label === 'Reembolso' ? 'credit-card' : label === 'Vale' ? 'gift' : 'refresh-cw'} size={15} color={selected ? colors.primary : colors.mutedForeground} /><Text style={[styles.optionText, { color: selected ? colors.primary : colors.foreground }]}>{label}</Text></Pressable>; })}</View>
+
+          <Pressable onPress={openReturns} style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.primary, opacity: pressed || busy ? 0.84 : 1 }]}><Text style={[styles.primaryButtonText, { color: colors.primaryForeground }]}>{item.returnsUrl ? 'Abrir enlace de devolución' : 'Añadir enlace de devolución'}</Text><Feather name="external-link" size={16} color={colors.primaryForeground} /></Pressable>
+          <Pressable onPress={() => finishReturn('in_progress')} style={[styles.secondaryButton, { backgroundColor: colors.card, borderColor: colors.border }]}><Feather name="package" size={16} color={colors.foreground} /><Text style={[styles.secondaryText, { color: colors.foreground }]}>Ya inicié la devolución</Text></Pressable>
+          <Pressable onPress={() => finishReturn('refunded')} style={styles.refundButton}><Feather name="check-circle" size={15} color={colors.success} /><Text style={[styles.refundText, { color: colors.success }]}>Ya recibí el reembolso</Text></Pressable>
+          <Pressable onPress={deleteItem} style={styles.deleteButton}><Text style={[styles.deleteText, { color: colors.mutedForeground }]}>Eliminar compra</Text></Pressable>
         </View>
       </ScrollView>
     </View>
   );
 }
 
+function DateCell({ label, value, colors }: { label: string; value: string; colors: ReturnType<typeof useApp>['colors'] }) {
+  return <View style={styles.dateCell}><Text style={[styles.dateLabel, { color: colors.mutedForeground }]}>{label}</Text><Text style={[styles.dateValue, { color: colors.foreground }]}>{value}</Text></View>;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  navbar: { height: 58, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  navButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  navTitle: { fontSize: 17, fontWeight: '600', flex: 1, textAlign: 'center' },
-  content: { paddingHorizontal: 20 },
-  heroCard: { borderRadius: 18, padding: 17, marginTop: 7, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
-  heroTop: { flexDirection: 'row', alignItems: 'center' },
-  storeMark: { width: 46, height: 46, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  storeInitial: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
-  heroCopy: { flex: 1 },
-  itemTitle: { fontSize: 17, fontWeight: '600', marginBottom: 4 },
-  itemStore: { fontSize: 13 },
-  price: { fontSize: 16, fontWeight: '600' },
-  metaGrid: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, marginTop: 17, paddingTop: 15 },
-  metaLabel: { fontSize: 12, marginBottom: 5 },
-  metaValue: { fontSize: 14, fontWeight: '500' },
-  countdownCard: { borderRadius: 18, marginTop: 12, padding: 20, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.1 },
-  ringWrap: { width: 202, height: 202, alignItems: 'center', justifyContent: 'center', marginVertical: 15 },
-  ringCenter: { position: 'absolute', alignItems: 'center' },
-  ringNumber: { fontSize: 48, fontWeight: '700', letterSpacing: -1 },
-  ringDays: { fontSize: 14, marginTop: -2 },
-  deadlinePill: { borderRadius: 100, paddingHorizontal: 13, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  deadlineText: { fontSize: 12, fontWeight: '600' },
-  sectionHeading: { fontSize: 20, fontWeight: '600', marginTop: 28, marginBottom: 12 },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  optionChip: { borderRadius: 100, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  primaryButton: { height: 54, borderRadius: 15, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9, marginTop: 25 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
-  returnedButton: { alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingVertical: 19 },
-  returnedText: { fontSize: 14, fontWeight: '600' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  missingTitle: { fontSize: 20, fontWeight: '700' },
+  missingCopy: { fontSize: 14, marginTop: 7 },
+  backLink: { marginTop: 20, padding: 12 },
+  navbar: { height: 54, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  navButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  navTitle: { fontSize: 15, fontWeight: '600' },
+  content: { paddingHorizontal: 22, paddingTop: 10 },
+  heroCard: { borderRadius: 22, borderWidth: 1, padding: 17 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 13 },
+  storeMark: { width: 47, height: 47, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  storeInitial: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  heroCopy: { flex: 1, gap: 4 },
+  itemTitle: { fontSize: 17, fontWeight: '700', letterSpacing: -0.3 },
+  itemStore: { fontSize: 12 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, marginTop: 16, paddingTop: 14 },
+  priceLabel: { fontSize: 12 },
+  price: { fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  deadlineCard: { minHeight: 112, borderRadius: 21, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  deadlineIcon: { width: 39, height: 39, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  deadlineCopy: { flex: 1, gap: 4 },
+  deadlineEyebrow: { fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
+  deadlineDate: { fontSize: 17, fontWeight: '700' },
+  deadlineHint: { fontSize: 12, fontWeight: '600' },
+  countdown: { minWidth: 44, alignItems: 'center' },
+  countdownNumber: { fontSize: 27, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  countdownLabel: { fontSize: 9, fontWeight: '600' },
+  sourceNote: { borderRadius: 13, borderWidth: 1, padding: 11, flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 9 },
+  sourceText: { flex: 1, fontSize: 11, lineHeight: 16 },
+  datesRow: { flexDirection: 'row', alignItems: 'center', marginTop: 19, marginBottom: 25 },
+  dateCell: { flex: 1, gap: 5 },
+  dateDivider: { width: 1, height: 30, marginHorizontal: 14 },
+  dateLabel: { fontSize: 11 },
+  dateValue: { fontSize: 13, fontWeight: '600' },
+  sectionHeading: { fontSize: 17, fontWeight: '700', marginBottom: 11 },
+  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 18 },
+  optionChip: { minHeight: 39, borderRadius: 13, borderWidth: 1, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  optionText: { fontSize: 12, fontWeight: '600' },
+  primaryButton: { minHeight: 51, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9 },
+  primaryButtonText: { fontSize: 14, fontWeight: '700' },
+  secondaryButton: { minHeight: 49, borderRadius: 16, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 9 },
+  secondaryText: { fontSize: 13, fontWeight: '600' },
+  refundButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 5 },
+  refundText: { fontSize: 12, fontWeight: '600' },
+  deleteButton: { alignItems: 'center', paddingVertical: 9 },
+  deleteText: { fontSize: 11, fontWeight: '500' },
 });

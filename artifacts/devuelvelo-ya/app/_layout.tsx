@@ -5,7 +5,6 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppProvider } from '@/context/AppContext';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -13,12 +12,10 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  return <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}><Stack.Screen name="index" /><Stack.Screen name="detail" /><Stack.Screen name="settings" /><Stack.Screen name="upload" options={{ presentation: 'formSheet', animation: 'slide_from_bottom', sheetAllowedDetents: [0.82, 1], sheetGrabberVisible: false, contentStyle: { backgroundColor: 'transparent' } }} /></Stack>;
+  return <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}><Stack.Screen name="index" /><Stack.Screen name="detail" /><Stack.Screen name="history" /><Stack.Screen name="settings" /><Stack.Screen name="upload" options={{ presentation: 'formSheet', animation: 'slide_from_bottom', sheetAllowedDetents: [0.78, 1], sheetGrabberVisible: true, contentStyle: { backgroundColor: 'transparent' } }} /></Stack>;
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({ Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold });
-  useEffect(() => { if (fontsLoaded || fontError) SplashScreen.hideAsync(); }, [fontsLoaded, fontError]);
-  if (!fontsLoaded && !fontError) return null;
+  useEffect(() => { SplashScreen.hideAsync(); }, []);
   return <SafeAreaProvider><ErrorBoundary><QueryClientProvider client={queryClient}><AppProvider><GestureHandlerRootView style={{ flex: 1 }}><KeyboardProvider><RootLayoutNav /></KeyboardProvider></GestureHandlerRootView></AppProvider></QueryClientProvider></ErrorBoundary></SafeAreaProvider>;
 }

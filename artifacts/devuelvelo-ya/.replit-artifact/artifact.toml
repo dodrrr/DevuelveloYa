@@ -1,8 +1,8 @@
 kind = "mobile"
 previewPath = "/devuelvelo-ya/"
 title = "DevuélveloYa"
-description = "Una app móvil para controlar devoluciones de compras online, con plazos de devolución visibles, recordatorios y una experiencia clara para no perder ninguna fecha límite."
-version = "1.0.0"
+description = "Una app móvil para guardar compras, consultar fechas límite y seguir devoluciones con una experiencia clara y cuidada."
+version = "1.1.0"
 id = "artifacts/devuelvelo-ya"
 router = "expo-domain"
 
