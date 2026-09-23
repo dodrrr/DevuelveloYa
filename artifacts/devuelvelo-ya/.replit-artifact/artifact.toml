@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/devuelvelo-ya/"
+title = "DevuélveloYa"
+description = "Una app móvil para controlar devoluciones de compras online, con plazos de devolución visibles, recordatorios y una experiencia clara para no perder ninguna fecha límite."
+version = "1.0.0"
+id = "artifacts/devuelvelo-ya"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/devuelvelo-ya/" ]
+localPort = 18174
+
+[services.development]
+run = "pnpm --filter @workspace/devuelvelo-ya run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/devuelvelo-ya", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/devuelvelo-ya", "run", "serve" ]
+
+[services.env]
+PORT = "18174"
+BASE_PATH = "/devuelvelo-ya/"

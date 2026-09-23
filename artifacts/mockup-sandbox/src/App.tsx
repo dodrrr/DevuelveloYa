@@ -1,5 +1,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 
+import DevuelveloApp from "./dvy/App";
+
 import { modules as discoveredModules } from "./.generated/mockup-components";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
@@ -140,7 +142,7 @@ function App() {
     );
   }
 
-  return <Gallery />;
+  return <DevuelveloApp />;
 }
 
 export default App;
