@@ -4,7 +4,8 @@ import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Appearance, useApp } from '@/context/AppContext';
+import { useApp } from '@/context/AppContext';
+import type { Appearance } from '@/constants/colors';
 
 export default function SettingsScreen() {
   const { colors, appearance, setAppearance, returns, history } = useApp();
