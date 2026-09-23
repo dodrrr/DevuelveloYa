@@ -52,6 +52,7 @@ const colors = {
   radius: 20,
 } as const;
 
-export type ThemeColors = typeof colors.light;
+export type ThemeColors = { [Key in keyof typeof colors.light]: string };
 export type Appearance = 'system' | 'light' | 'dark';
 export default colors;
+

@@ -109,7 +109,7 @@ export default function HomeScreen() {
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Guarda una compra y te ayudaremos a tener presente su fecha límite.</Text>
             <Pressable onPress={openUpload} style={({ pressed }) => [styles.emptyAction, { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 }]}><Feather name="plus" size={17} color={colors.primaryForeground} /><Text style={styles.emptyActionText}>Añadir primera compra</Text></Pressable>
           </View>
-        ) : <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Preparando tus compras…</Text> : null}
+        ) : <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Preparando tus compras…</Text>}
       />
       <View style={[styles.fixedActions, { paddingBottom: insets.bottom + 8 }]}>
         <Pressable onPress={openUpload} style={({ pressed }) => [styles.uploadButton, { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.99 : 1 }] }]} accessibilityRole="button"><Feather name="plus" size={19} color={colors.primaryForeground} /><Text style={[styles.uploadButtonText, { color: colors.primaryForeground }]}>Añadir compra</Text></Pressable>
@@ -173,3 +173,4 @@ const styles = StyleSheet.create({
   navItem: { minWidth: 78, alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 },
   navLabel: { fontSize: 10, fontWeight: '600' },
 });
+
