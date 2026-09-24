@@ -27,6 +27,14 @@
 # ============================================================================
 minimumReleaseAge: 1440
 
+# The worklets Babel plugin imports these packages at runtime but omits them
+# from its published dependencies. Keep the Expo bundle reproducible with pnpm.
+packageExtensions:
+  react-native-worklets@0.10.1:
+    dependencies:
+      '@babel/generator': '^7.29.8'
+      '@babel/traverse': '^7.29.8'
+
 minimumReleaseAgeExclude:
   # Exclude @replit scoped packages from the minimum release age check.
   # These are published by Replit and trusted — the supply-chain attack vector

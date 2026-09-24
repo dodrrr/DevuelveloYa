@@ -2,7 +2,7 @@ kind = "mobile"
 previewPath = "/devuelvelo-ya/"
 title = "DevuélveloYa"
 description = "Una app móvil para guardar compras, consultar fechas límite y seguir devoluciones con una experiencia clara y cuidada."
-version = "1.1.0"
+version = "1.2.0"
 id = "artifacts/devuelvelo-ya"
 router = "expo-domain"
 

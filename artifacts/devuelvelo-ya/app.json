@@ -2,16 +2,27 @@
   "expo": {
     "name": "DevuélveloYa",
     "slug": "devuelvelo-ya",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "devuelvelo-ya",
     "userInterfaceStyle": "automatic",
-    "splash": { "backgroundColor": "#F5F6F8", "image": "./assets/images/icon.png", "resizeMode": "contain" },
-    "ios": { "supportsTablet": false },
+    "splash": {
+      "backgroundColor": "#F7F3EC",
+      "image": "./assets/images/icon.png",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
     "android": {},
-    "web": { "favicon": "./assets/images/icon.png" },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
     "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true, "reactCompiler": true }
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
   }
 }

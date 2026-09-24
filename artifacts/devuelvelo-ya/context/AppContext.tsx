@@ -49,7 +49,7 @@ function initialsFor(store: string) {
 }
 
 function accentFor(store: string) {
-  const accents = ['#315CE8', '#8066D8', '#27856C', '#C47734', '#D45E66'];
+  const accents = ['#A34F2B', '#76604C', '#52715B', '#A27637', '#996356'];
   return accents[[...store].reduce((sum, char) => sum + char.charCodeAt(0), 0) % accents.length];
 }
 
@@ -66,7 +66,7 @@ function normalizeItem(value: ReturnItem): ReturnItem | null {
     title: value.title.trim(),
     store,
     initials: initialsFor(store),
-    accent: value.accent || accentFor(store),
+    accent: accentFor(store),
     price: Number.isFinite(Number(value.price)) ? Number(value.price) : 0,
     purchaseDate,
     deadline,
